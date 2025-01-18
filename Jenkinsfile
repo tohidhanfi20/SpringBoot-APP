@@ -61,15 +61,5 @@ pipeline {
                 }
             }
         }
-        stage('SonarQube Webhook') {
-            steps {
-                script {
-                    // Send a webhook to Jenkins from SonarQube after analysis
-                    sh """
-                    curl -X POST -d "payload={\"build_status\":\"success\",\"project_name\":\"SpringApp\"}" ${SONAR_WEBHOOK_URL}
-                    """
-                }
-            }
-        }
     }
 }
