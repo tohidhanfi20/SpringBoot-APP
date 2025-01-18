@@ -1,10 +1,10 @@
 pipeline {
     agent any
-
+    
     tools {
         maven 'maven'  // Ensure Maven is configured in Jenkins
     }
-
+    
     environment {
         JAR_NAME = 'spring_app_sak-0.0.1-SNAPSHOT.jar'  // Correcting the JAR file name
         IMAGE_NAME = 'sakgroup'  // Docker image name
@@ -31,15 +31,13 @@ pipeline {
                 }
             }
         }
-        stage("SonarQube Analysis with Docker") {
+        stage("SonarQube Analysis") {
             steps {
-                script {
-                    // Use Docker container to run SonarScanner
-                    sh '''
-                    docker run --rm -e SONARQUBE_HOST_URL=${SONARQUBE_SERVER} -e SONARQUBE_TOKEN=${SONARQUBE_TOKEN} \
-                    -v $(pwd):/usr/src \
-                    sonarsource/sonar-scanner-cli \
-                    -Dsonar.projectName=SpringApp -Dsonar.projectKey=SpringApp -Dsonar.login=${SONARQUBE_TOKEN}
+                withSonarQubeEnv("${SONARQUBE_SERVER}") {
+                    sh ''' 
+                    $SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=SpringApp \
+                    -Dsonar.projectKey=SpringApp \
+                    -Dsonar.login=${SONARQUBE_TOKEN}
                     '''
                 }
             }
@@ -79,7 +77,7 @@ pipeline {
                 script {
                     // Run MySQL container
                     sh 'docker run -d --name ${MYSQL_CONTAINER} -e MYSQL_ROOT_PASSWORD=1234 -p 3306:3306 mysql:latest'
-
+                    
                     // Run Spring Boot container
                     sh 'docker run -d --name springapp -p 8081:8081 ${IMAGE_NAME}'
                 }
