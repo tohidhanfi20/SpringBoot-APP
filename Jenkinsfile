@@ -2,7 +2,7 @@ pipeline {
     agent any
     
     tools {
-        maven 'maven'
+        maven 'maven'  // Ensure Maven is configured in Jenkins
     }
     
     environment {
@@ -23,52 +23,11 @@ pipeline {
                 git credentialsId: "${GIT_CRED}", url: 'https://github.com/tohidhanfi20/SpringBoot-APP.git', branch: 'main'
             }
         }
-        stage('Maven Clean') {
+        stage('Maven Build and Test') {
             steps {
                 script {
-                    sh 'mvn clean'  // This will clean your workspace
-                }
-            }
-        }
-        stage('Maven Validate') {
-            steps {
-                script {
-                    sh 'mvn validate'  // This will validate your code
-                }
-            }
-        }
-        stage('Maven Compile') {
-            steps {
-                script {
-                    sh 'mvn compile'  // This will compile your code
-                }
-            }
-        }
-        stage('Maven Test') {
-            steps {
-                script {
-                    sh 'mvn test'  // This will test your code
-                }
-            }
-        }
-        stage('Maven Package') {
-            steps {
-                script {
-                    sh 'mvn package'  // This will make a package
-                }
-            }
-        }
-        stage('Maven Verify') {
-            steps {
-                script {
-                    sh 'mvn verify'  // This will verify your code
-                }
-            }
-        }
-        stage('Maven Install') {
-            steps {
-                script {
-                    sh 'mvn install'  // This will install and give you a JAR file as output
+                    // Build and run tests using Maven
+                    sh 'mvn clean validate compile test package verify install'
                 }
             }
         }
@@ -86,41 +45,48 @@ pipeline {
         stage('Quality Gate') {
             steps {
                 script {
+                    // Wait for quality gate result
                     waitForQualityGate abortPipeline: false, credentialsId: 'SONARQUBE_CREDENTIALS'
                 }
             }
         }
         stage('Trivy FS Scan') {
             steps {
-                sh "trivy fs . > trivyfs.txt -o table"  // Run Trivy scan on file system
+                // Run Trivy scan on file system
+                sh "trivy fs . > trivyfs.txt -o table"
             }
         }
         stage('Build Docker Image') {
             steps {
                 script {
+                    // Build the Docker image using the provided Dockerfile
                     sh '''
-                    docker build -t ${IMAGE_NAME} -f Dockerfile .  // Build the Docker image
+                    docker build -t ${IMAGE_NAME} -f Dockerfile .
                     '''
                 }
             }
         }
         stage('Trivy Image Scan') {
             steps {
-                sh "trivy image ${IMAGE_NAME} > trivy_image.txt -o html"  // Run Trivy scan on Docker image
+                // Run Trivy scan on Docker image
+                sh "trivy image ${IMAGE_NAME} > trivy_image.txt -o html"
             }
         }
-        stage('Run Docker Container') {
+        stage('Run Docker Containers') {
             steps {
                 script {
-                    sh 'docker run -d --name ${MYSQL_CONTAINER} -e MYSQL_ROOT_PASSWORD=1234 -p 3306:3306 mysql:latest'  // Start MySQL container
-                    sh 'docker run -d --name springapp -p 8081:8081 ${IMAGE_NAME}'  // Run Spring Boot container
+                    // Run MySQL container
+                    sh 'docker run -d --name ${MYSQL_CONTAINER} -e MYSQL_ROOT_PASSWORD=1234 -p 3306:3306 mysql:latest'
+                    
+                    // Run Spring Boot container
+                    sh 'docker run -d --name springapp -p 8081:8081 ${IMAGE_NAME}'
                 }
             }
         }
         stage('SonarQube Webhook') {
             steps {
                 script {
-                    // Send a webhook to Jenkins from SonarQube
+                    // Send a webhook to Jenkins from SonarQube after analysis
                     sh """
                     curl -X POST -d "payload={\"build_status\":\"success\",\"project_name\":\"SpringApp\"}" ${SONAR_WEBHOOK_URL}
                     """
