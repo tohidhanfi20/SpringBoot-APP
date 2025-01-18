@@ -58,9 +58,10 @@ pipeline {
         stage('Stop and Remove Existing Containers') {
             steps {
                 script {
-                    // Stop and remove existing MySQL and Spring app containers if they exist
+                    // Stop and remove existing MySQL container if it exists
                     sh 'docker ps -aq --filter name=${MYSQL_CONTAINER} | xargs -I {} docker stop {} || true'
                     sh 'docker ps -aq --filter name=${MYSQL_CONTAINER} | xargs -I {} docker rm {} || true'
+                    // Stop and remove existing Spring app container if it exists
                     sh 'docker ps -aq --filter name=springapp | xargs -I {} docker stop {} || true'
                     sh 'docker ps -aq --filter name=springapp | xargs -I {} docker rm {} || true'
                 }
@@ -82,13 +83,9 @@ pipeline {
 
     post {
         always {
-            script {
-                // Clean up containers after pipeline execution
-                sh 'docker ps -aq --filter name=${MYSQL_CONTAINER} | xargs -I {} docker stop {} || true'
-                sh 'docker ps -aq --filter name=${MYSQL_CONTAINER} | xargs -I {} docker rm {} || true'
-                sh 'docker ps -aq --filter name=springapp | xargs -I {} docker stop {} || true'
-                sh 'docker ps -aq --filter name=springapp | xargs -I {} docker rm {} || true'
-            }
+            // This block will not clean up the containers to allow you to access them.
+            // If you need to clean them up, you can run this manually after you're done.
+            echo 'Pipeline completed. Containers are still running for you to access.'
         }
     }
 }
