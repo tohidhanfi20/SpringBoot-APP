@@ -10,10 +10,7 @@ pipeline {
         IMAGE_NAME = 'sakgroup'  // Docker image name
         MYSQL_CONTAINER = 'mysql-container'  // Name of the MySQL container
         GIT_CRED = 'git-cred'  // Git credentials ID
-        SONARQUBE_SERVER = 'sonar-server'  // SonarQube server environment
-        SONARQUBE_TOKEN = credentials('sonar-token')  // SonarQube token from Jenkins credentials
         JENKINS_URL = 'http://43.204.24.237:8080'  // Jenkins IP address
-        SONAR_WEBHOOK_URL = 'http://43.204.24.237:8080/sonarqube-webhook'  // Jenkins webhook URL
     }
 
     stages {
@@ -28,25 +25,6 @@ pipeline {
                 script {
                     // Build and run tests using Maven
                     sh 'mvn clean validate compile test package verify install'
-                }
-            }
-        }
-        stage("SonarQube Analysis") {
-            steps {
-                withSonarQubeEnv("${SONARQUBE_SERVER}") {
-                    sh ''' 
-                    $SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=SpringApp \
-                    -Dsonar.projectKey=SpringApp \
-                    -Dsonar.login=${SONARQUBE_TOKEN}
-                    '''
-                }
-            }
-        }
-        stage('Quality Gate') {
-            steps {
-                script {
-                    // Wait for quality gate result
-                    waitForQualityGate abortPipeline: false, credentialsId: 'SONARQUBE_CREDENTIALS'
                 }
             }
         }
