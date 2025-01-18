@@ -14,7 +14,7 @@ pipeline {
         stage('Checkout Code from GitHub') {
             steps {
                 // Checkout code from GitHub
-                git credentialsId: 'git-cred', url: 'https://github.com/tohidhanfi20/Portfolio-Webapp.git', branch: 'main'
+                git credentialsId: 'git-cred', url: 'https://github.com/tohidhanfi20/SpringBoot-APP.git', branch: 'main'
             }
         }
         stage('Maven Clean') {
