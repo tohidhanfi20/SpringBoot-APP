@@ -59,23 +59,16 @@ pipeline {
         stage('Run Docker Containers') {
             steps {
                 script {
-                    // Stop and remove existing MySQL container if it exists
+                    // Ensure MySQL container is running (no need to stop or remove it)
                     sh """
-                    docker ps -a -q -f name=${MYSQL_CONTAINER} | xargs -r docker stop
-                    docker ps -a -q -f name=${MYSQL_CONTAINER} | xargs -r docker rm
+                    docker ps -a -q -f name=${MYSQL_CONTAINER} | xargs -r docker start
                     """
 
-                    // Run MySQL container
-                    sh 'docker run -d --name ${MYSQL_CONTAINER} -e MYSQL_ROOT_PASSWORD=1234 -p 3306:3306 mysql:latest'
-
-                    // Stop and remove existing Spring Boot container if it exists
-                    sh """
-                    docker ps -a -q -f name=${SPRING_APP_CONTAINER} | xargs -r docker stop
-                    docker ps -a -q -f name=${SPRING_APP_CONTAINER} | xargs -r docker rm
-                    """
-
-                    // Run Spring Boot container
-                    sh 'docker run -d --name ${SPRING_APP_CONTAINER} -p 8081:8080 ${IMAGE_NAME}'
+                    // Run Spring Boot container (if not already running)
+                    sh '''
+                    docker ps -a -q -f name=${SPRING_APP_CONTAINER} | xargs -r docker start
+                    docker run -d --name ${SPRING_APP_CONTAINER} -p 8081:8080 ${IMAGE_NAME}
+                    '''
                 }
             }
         }
@@ -93,13 +86,8 @@ pipeline {
     post {
         always {
             echo 'Cleaning up resources after the pipeline execution...'
-            // Stop and remove containers in case they are still running
-            sh """
-            docker ps -a -q -f name=${MYSQL_CONTAINER} | xargs -r docker stop
-            docker ps -a -q -f name=${MYSQL_CONTAINER} | xargs -r docker rm
-            docker ps -a -q -f name=${SPRING_APP_CONTAINER} | xargs -r docker stop
-            docker ps -a -q -f name=${SPRING_APP_CONTAINER} | xargs -r docker rm
-            """
+            // No MySQL container stop here, it will keep running.
+            // Spring Boot container is not touched after it starts running.
         }
     }
 }
