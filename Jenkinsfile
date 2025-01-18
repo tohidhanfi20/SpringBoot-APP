@@ -9,6 +9,8 @@ pipeline {
         JAR_NAME = 'spring_app_sak-0.0.1-SNAPSHOT.jar'  // Correcting the JAR file name
         IMAGE_NAME = 'sakgroup'  // Docker image name
         MYSQL_CONTAINER = 'mysql-container'  // Name of the MySQL container
+        SPRING_APP_CONTAINER = 'springapp'  // Name of the Spring Boot container
+        MYSQL_PASSWORD = '1234'  // MySQL root password
         GIT_CRED = 'git-cred'  // Git credentials ID
         JENKINS_URL = 'http://43.204.24.237:8080'  // Jenkins IP address
     }
@@ -53,11 +55,17 @@ pipeline {
         stage('Run Docker Containers') {
             steps {
                 script {
+                    // Stop and remove any existing containers before starting new ones
+                    sh '''
+                    docker ps -a -q --filter "name=${MYSQL_CONTAINER}" | xargs -r docker rm -f
+                    docker ps -a -q --filter "name=${SPRING_APP_CONTAINER}" | xargs -r docker rm -f
+                    '''
+                    
                     // Run MySQL container
-                    sh 'docker run -d --name ${MYSQL_CONTAINER} -e MYSQL_ROOT_PASSWORD=1234 -p 3306:3306 mysql:latest'
+                    sh 'docker run -d --name ${MYSQL_CONTAINER} -e MYSQL_ROOT_PASSWORD=${MYSQL_PASSWORD} -p 3306:3306 mysql:latest'
                     
                     // Run Spring Boot container
-                    sh 'docker run -d --name springapp -p 8081:8081 ${IMAGE_NAME}'
+                    sh 'docker run -d --name ${SPRING_APP_CONTAINER} -p 8081:8081 ${IMAGE_NAME}'
                 }
             }
         }
