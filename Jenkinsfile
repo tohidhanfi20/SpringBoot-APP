@@ -7,9 +7,10 @@ pipeline {
 
     environment {
         JAR_NAME = 'spring_app_sak-0.0.1-SNAPSHOT.jar'  // Correcting the JAR file name
-        IMAGE_NAME = 'sakgroup'  // Docker image name
-        MYSQL_CONTAINER = 'mysql-container'  // Name of the MySQL container
+        IMAGE_NAME = 'tohidspring'  // Docker image name
+        DOCKER_HUB_REPO = 'tohidaws/tohidspring'  // Replace with your Docker Hub repo name
         GIT_CRED = 'git-cred'  // Git credentials ID
+        DOCKER_HUB_CRED = 'docker-hub-cred'  // Docker Hub credentials ID in Jenkins
         JENKINS_URL = 'http://43.204.24.237:8080'  // Jenkins IP address
     }
 
@@ -33,7 +34,7 @@ pipeline {
         stage('Trivy FS Scan') {
             steps {
                 // Run Trivy scan on the file system
-                sh "trivy fs . > trivyfs.txt -o table"
+                sh "trivy fs . > trivyfs.txt"
             }
         }
 
@@ -48,34 +49,40 @@ pipeline {
             }
         }
 
-        stage('Trivy Image Scan') {
-            steps {
-                // Run Trivy scan on Docker image
-                sh "trivy image ${IMAGE_NAME} > trivy_image.txt -o html"
-            }
-        }
-
-        stage('Stop and Remove Existing Containers') {
+        stage('Tag and Push to Docker Hub') {
             steps {
                 script {
-                    // Stop and remove existing MySQL container if it exists
-                    sh 'docker ps -aq --filter name=${MYSQL_CONTAINER} | xargs -I {} docker stop {} || true'
-                    sh 'docker ps -aq --filter name=${MYSQL_CONTAINER} | xargs -I {} docker rm {} || true'
-                    // Stop and remove existing Spring app container if it exists
-                    sh 'docker ps -aq --filter name=springapp | xargs -I {} docker stop {} || true'
-                    sh 'docker ps -aq --filter name=springapp | xargs -I {} docker rm {} || true'
+                    // Log in to Docker Hub and push the image
+                    withCredentials([usernamePassword(credentialsId: "${DOCKER_HUB_CRED}", usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+                        sh '''
+                        echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+                        docker tag ${IMAGE_NAME} ${DOCKER_HUB_REPO}
+                        docker push ${DOCKER_HUB_REPO}
+                        '''
+                    }
                 }
             }
         }
 
-        stage('Run Docker Containers') {
+        stage('Remove Local Docker Image') {
             steps {
                 script {
-                    // Run MySQL container
-                    sh 'docker run -d --name ${MYSQL_CONTAINER} -e MYSQL_ROOT_PASSWORD=1234 -p 3306:3306 mysql:latest'
+                    // Remove the local Docker image
+                    sh '''
+                    docker rmi -f ${IMAGE_NAME} || true
+                    '''
+                }
+            }
+        }
 
-                    // Run Spring Boot container
-                    sh 'docker run -d --name springapp -p 8081:8081 ${IMAGE_NAME}'
+        stage('Pull and Run Docker Image from Docker Hub') {
+            steps {
+                script {
+                    // Pull and run the image from Docker Hub
+                    sh '''
+                    docker pull ${DOCKER_HUB_REPO}
+                    docker run -d --name springapp -p 8081:8081 ${DOCKER_HUB_REPO}
+                    '''
                 }
             }
         }
@@ -83,9 +90,7 @@ pipeline {
 
     post {
         always {
-            // This block will not clean up the containers to allow you to access them.
-            // If you need to clean them up, you can run this manually after you're done.
-            echo 'Pipeline completed. Containers are still running for you to access.'
+            echo 'Pipeline completed. Container is running from the pulled Docker Hub image.'
         }
     }
 }
