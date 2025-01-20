@@ -10,8 +10,9 @@ pipeline {
         IMAGE_NAME = 'tohidspring'  // Docker image name
         DOCKER_HUB_REPO = 'tohidaws/tohidspring'  // Replace with your Docker Hub repo name
         GIT_CRED = 'git-cred'  // Git credentials ID
-        DOCKER_HUB_CRED = 'docker-hub-cred'  // Docker Hub credentials ID in Jenkins
-        JENKINS_URL = 'http://43.204.24.237:8080'  // Jenkins IP address
+        DOCKER_USERNAME = 'tohidaws'  // Docker Hub username
+        DOCKER_TOKEN = credentials('docker-hub-token')  // The Jenkins credentials ID for the Docker token
+        JENKINS_URL = 'http://3.110.120.177:8080'  // Jenkins IP address
     }
 
     stages {
@@ -49,17 +50,22 @@ pipeline {
             }
         }
 
+        stage('Trivy Image Scan') {
+            steps {
+                // Run Trivy scan on the Docker image
+                sh "trivy image ${IMAGE_NAME} > trivy_image.txt -o html"
+            }
+        }
+
         stage('Tag and Push to Docker Hub') {
             steps {
                 script {
-                    // Log in to Docker Hub and push the image
-                    withCredentials([usernamePassword(credentialsId: "${DOCKER_HUB_CRED}", usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
-                        sh '''
-                        echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-                        docker tag ${IMAGE_NAME} ${DOCKER_HUB_REPO}
-                        docker push ${DOCKER_HUB_REPO}
-                        '''
-                    }
+                    // Log in to Docker Hub and push the image using the token
+                    echo "${DOCKER_TOKEN}" | docker login -u "${DOCKER_USERNAME}" --password-stdin
+                    sh '''
+                    docker tag ${IMAGE_NAME} ${DOCKER_HUB_REPO}
+                    docker push ${DOCKER_HUB_REPO}
+                    '''
                 }
             }
         }
