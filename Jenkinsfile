@@ -52,8 +52,8 @@ pipeline {
 
         stage('Trivy Image Scan') {
             steps {
-                // Run Trivy scan on the Docker image
-                sh "trivy image ${IMAGE_NAME} > trivy_image.txt -o html"
+                // Run Trivy scan on Docker image
+                sh "trivy image --format html -o trivy_image_report.html ${IMAGE_NAME}"
             }
         }
 
@@ -61,11 +61,11 @@ pipeline {
             steps {
                 script {
                     // Log in to Docker Hub and push the image using the token
-                    echo "${DOCKER_TOKEN}" | docker login -u "${DOCKER_USERNAME}" --password-stdin
-                    sh '''
+                    sh """
+                    echo '${DOCKER_TOKEN}' | docker login -u '${DOCKER_USERNAME}' --password-stdin
                     docker tag ${IMAGE_NAME} ${DOCKER_HUB_REPO}
                     docker push ${DOCKER_HUB_REPO}
-                    '''
+                    """
                 }
             }
         }
